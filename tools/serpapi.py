@@ -50,7 +50,7 @@ class CustomSerpAPIWrapper(SerpAPIWrapper):
 
 def search(text: str) -> str:
     """
-    Searches web for given text and returns results.
+    Google web search for given text and returns results.
     :param text: search string
     :return: result
     """
