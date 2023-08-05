@@ -15,6 +15,9 @@ from agents.twitter import get_twitter_profile_username
 # noinspection PyUnresolvedReferences
 from third_parties.linkedin import get_linkedin_profile, get_saved_linkedin_profile
 
+from langchain.output_parsers import PydanticOutputParser
+from parsers.pydantic import PersonalIntel
+
 
 def run_chain_for_information() -> None:
     """
@@ -59,7 +62,7 @@ def run_chain_for_twitter_username(name: str) -> str:
     return result
 
 
-def run_chain_for_social_media(name: str) -> None:
+def run_chain_for_social_media(name: str) -> PersonalIntel:
     """
     Step 1: Searches google for LinkedIn URL of the person
     Step 2: Fetches public data from LinkedIn about the person using the url
@@ -78,21 +81,24 @@ def run_chain_for_social_media(name: str) -> None:
         f"storage/linkedin/ranjan.pradhan.json"
     )
     # tweets = scrape_user_tweets(username=run_chain_for_twitter_username(name), num_tweets=5)
-
+    out_parser = PydanticOutputParser(pydantic_object=PersonalIntel)
     custom_template = """
         Given the LinkedIn information {linkedin_profile} about a person, create
         1. A short summary
         2. Two interesting facts about the person
         3. A topic that may interest them
         4. Two creative Ice-breakers to open a conversation with them
+        \n{format_instructions}
         """
 
     prompt = PromptTemplate(
-        input_variables=["linkedin_profile"], template=custom_template
+        input_variables=["linkedin_profile"],
+        template=custom_template,
+        partial_variables={"format_instructions": out_parser.get_format_instructions()},
     )
     llm = ChatOpenAI(temperature=0, model_name="gpt-3.5-turbo")
     chain = LLMChain(llm=llm, prompt=prompt)
-    print(chain.run(linkedin_profile=linkedin_profile))
+    return out_parser.parse(chain.run(linkedin_profile=linkedin_profile))
 
 
 if __name__ == "__main__":
@@ -100,7 +106,9 @@ if __name__ == "__main__":
     load_dotenv()
 
     print("Hello LangChain!")
-    run_chain_for_social_media(
-        "Ranjan Pradhan, Director, Applied Innovation Exchange Hyderabad, Capgemini India"
-    )
+    result = run_chain_for_social_media("Ranjan Pradhan, Capgemini India")
+    print(result.summary, end="\n")
+    print(result.facts, end="\n")
+    print(result.topics_of_interest, end="\n")
+    print(result.ice_breakers)
     # print(scrape_user_tweets(username="@elonmusk", num_tweets=100))
