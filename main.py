@@ -77,9 +77,7 @@ def run_chain_for_social_media(name: str) -> PersonalIntel:
     # with open(f"storage/linkedin/{pi}.json", "wb") as f:
     #     f.write(profile.content)
 
-    linkedin_profile = get_saved_linkedin_profile(
-        f"storage/linkedin/ranjan.pradhan.json"
-    )
+    linkedin_profile = get_saved_linkedin_profile(f"storage/linkedin/ranjan252812.json")
     # tweets = scrape_user_tweets(username=run_chain_for_twitter_username(name), num_tweets=5)
     out_parser = PydanticOutputParser(pydantic_object=PersonalIntel)
     custom_template = """

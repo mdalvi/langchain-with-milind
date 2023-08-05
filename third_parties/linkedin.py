@@ -27,7 +27,6 @@ def get_saved_linkedin_profile(profile_path: str) -> dict:
     if data.get("groups"):
         for dict_ in data["groups"]:
             dict_.pop("profile_pic_url", None)
-    data.pop("profile_pic_url", None)
     data.pop("similarly_named_profiles", None)
     if data.get("experiences"):
         for dict_ in data["experiences"]:
