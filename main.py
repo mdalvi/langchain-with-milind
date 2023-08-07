@@ -1,5 +1,6 @@
 # noinspection PyUnresolvedReferences
 import json
+import os
 
 # noinspection PyUnresolvedReferences
 import joblib
@@ -12,11 +13,18 @@ from agents.linkedin import get_linkedin_profile_url
 from third_parties.twitter import scrape_user_tweets
 from agents.twitter import get_twitter_profile_username
 
+
 # noinspection PyUnresolvedReferences
 from third_parties.linkedin import get_linkedin_profile, get_saved_linkedin_profile
 
 from langchain.output_parsers import PydanticOutputParser
 from parsers.pydantic import PersonalIntel
+from langchain.document_loaders import TextLoader
+from langchain.vectorstores import Pinecone
+import pinecone
+from langchain.text_splitter import CharacterTextSplitter
+from langchain.embeddings import OpenAIEmbeddings
+from langchain.chains import RetrievalQA
 
 
 def run_chain_for_information() -> None:
@@ -86,6 +94,7 @@ def run_chain_for_social_media(name: str) -> PersonalIntel:
         2. Two interesting facts about the person
         3. A topic that may interest them
         4. Two creative Ice-breakers to open a conversation with them
+        5. Two questions to ask them in job interview
         \n{format_instructions}
         """
 
@@ -99,14 +108,38 @@ def run_chain_for_social_media(name: str) -> PersonalIntel:
     return out_parser.parse(chain.run(linkedin_profile=linkedin_profile))
 
 
+def run_chain_for_retrival_qna(q: str) -> None:
+    pinecone.init(
+        api_key=os.environ["PINECONE_API_KEY"],
+        environment=os.environ["PINECONE_ENVIRONMENT"],
+    )
+    doc_loader = TextLoader(
+        "storage/text_documents/rt-2-new-model-translates-vision-and-language-into-action.txt"
+    )
+    document = doc_loader.load()
+
+    splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=350)
+    contexts = splitter.split_documents(document)
+    print(f"Number of contexts created by splitter: # {len(contexts)}")
+
+    embeddings = OpenAIEmbeddings()
+    vector_store_client = pinecone.Index("rt-2-robotics")
+    vector_store = Pinecone(
+        vector_store_client, embedding_function=embeddings.embed_query, text_key="text"
+    )
+    # vector_store.add_documents(contexts)
+
+    chain = RetrievalQA.from_chain_type(
+        llm=ChatOpenAI(temperature=0, model_name="gpt-3.5-turbo"),
+        chain_type="stuff",
+        retriever=vector_store.as_retriever(),
+    )
+    return chain.run({"query": q})
+
+
 if __name__ == "__main__":
     # Load environment variables
     load_dotenv()
 
     print("Hello LangChain!")
-    result = run_chain_for_social_media("Ranjan Pradhan, Capgemini India")
-    print(result.summary, end="\n")
-    print(result.facts, end="\n")
-    print(result.topics_of_interest, end="\n")
-    print(result.ice_breakers)
     # print(scrape_user_tweets(username="@elonmusk", num_tweets=100))

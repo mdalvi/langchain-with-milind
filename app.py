@@ -1,25 +1,21 @@
-# noinspection PyUnresolvedReferences
+import base64
 import json
+import os
+import shutil
+from typing import Tuple
 
-# noinspection PyUnresolvedReferences
-import joblib
 import streamlit as st
+from dotenv import load_dotenv
 from langchain import PromptTemplate
 from langchain.chains import LLMChain
 from langchain.chat_models import ChatOpenAI
 from langchain.output_parsers import PydanticOutputParser
 from pydantic import ValidationError, constr, BaseModel
-import os
-from parsers.pydantic import PersonalIntel
-from typing import Tuple
-import shutil
-# noinspection PyUnresolvedReferences
-from third_parties.linkedin import get_linkedin_profile, get_saved_linkedin_profile
 
+from parsers.pydantic import PersonalIntel
+from third_parties.linkedin import get_linkedin_profile, get_saved_linkedin_profile
 from tools.regex import get_linkedin_username
 from tools.requests import get_image_from_url
-from dotenv import load_dotenv
-import base64
 
 
 class LinkedInUrlModel(BaseModel):
@@ -55,8 +51,13 @@ def run_chain_for_linkedin(
 
     image_path = f"storage/linkedin/images/{user_name}.jpg"
     if not os.path.exists(image_path):
-        if not get_image_from_url(profile_data["profile_pic_url"], f"storage/linkedin/images/{user_name}.jpg"):
-            shutil.copy(f"storage/linkedin/images/no_image.jpg", f"storage/linkedin/images/{user_name}.jpg")
+        if not get_image_from_url(
+            profile_data["profile_pic_url"], f"storage/linkedin/images/{user_name}.jpg"
+        ):
+            shutil.copy(
+                f"storage/linkedin/images/no_image.jpg",
+                f"storage/linkedin/images/{user_name}.jpg",
+            )
 
     profile_data.pop("profile_pic_url", None)
     profile_data.pop("background_cover_image_url", None)
