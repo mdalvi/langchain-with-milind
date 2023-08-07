@@ -1,30 +1,32 @@
 # noinspection PyUnresolvedReferences
 import json
 import os
+from pathlib import Path
 
 # noinspection PyUnresolvedReferences
 import joblib
+import pinecone
 from dotenv import load_dotenv
 from langchain import PromptTemplate
 from langchain.chains import LLMChain
+from langchain.chains import RetrievalQA
 from langchain.chat_models import ChatOpenAI
-from pathlib import Path
-from agents.linkedin import get_linkedin_profile_url
-from third_parties.twitter import scrape_user_tweets
-from agents.twitter import get_twitter_profile_username
+from langchain.document_loaders import TextLoader, PyPDFLoader
+from langchain.embeddings import OpenAIEmbeddings
+from langchain.output_parsers import PydanticOutputParser
+from langchain.text_splitter import CharacterTextSplitter
+import faiss
 
+# noinspection PyUnresolvedReferences
+from langchain.vectorstores import Pinecone, FAISS
+
+from agents.linkedin import get_linkedin_profile_url
+from agents.twitter import get_twitter_profile_username
+from parsers.pydantic import PersonalIntel
 
 # noinspection PyUnresolvedReferences
 from third_parties.linkedin import get_linkedin_profile, get_saved_linkedin_profile
-
-from langchain.output_parsers import PydanticOutputParser
-from parsers.pydantic import PersonalIntel
-from langchain.document_loaders import TextLoader
-from langchain.vectorstores import Pinecone
-import pinecone
-from langchain.text_splitter import CharacterTextSplitter
-from langchain.embeddings import OpenAIEmbeddings
-from langchain.chains import RetrievalQA
+from langchain.docstore import InMemoryDocstore
 
 
 def run_chain_for_information() -> None:
@@ -108,7 +110,7 @@ def run_chain_for_social_media(name: str) -> PersonalIntel:
     return out_parser.parse(chain.run(linkedin_profile=linkedin_profile))
 
 
-def run_chain_for_retrival_qna(q: str) -> None:
+def run_retrival_qna_chain_for_text_document(q: str) -> str:
     pinecone.init(
         api_key=os.environ["PINECONE_API_KEY"],
         environment=os.environ["PINECONE_ENVIRONMENT"],
@@ -137,9 +139,53 @@ def run_chain_for_retrival_qna(q: str) -> None:
     return chain.run({"query": q})
 
 
+def run_retrival_qna_chain_for_pdf_document() -> None:
+    capgemini_doc_loader = PyPDFLoader(
+        "storage/pdf_documents/Final-Web-Version-Report-Harnessing-the-Value-of-Gen-AI.1.pdf"
+    )
+    accenture_doc_loader = PyPDFLoader(
+        "storage/pdf_documents/Accenture-A-New-Era-of-Generative-AI-for-Everyone.pdf"
+    )
+    capgemini_documents = capgemini_doc_loader.load()
+    accenture_documents = accenture_doc_loader.load()
+
+    splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=350, separator="\n")
+    cap_contexts = splitter.split_documents(capgemini_documents)
+    acc_contexts = splitter.split_documents(accenture_documents)
+    print(
+        f"Number of contexts created by splitter: # {len(cap_contexts)}, {len(acc_contexts)}"
+    )
+    embeddings = OpenAIEmbeddings()
+
+    # Initialize the vectorstore as empty
+    embedding_size = 1536
+    index = faiss.IndexFlatL2(embedding_size)
+    vector_store = FAISS(
+        embedding_function=embeddings.embed_query,
+        index=index,
+        docstore=InMemoryDocstore(),
+        index_to_docstore_id=dict(),
+    )
+
+    vector_store.add_documents(cap_contexts)
+    vector_store.add_documents(acc_contexts)
+
+    chain = RetrievalQA.from_chain_type(
+        llm=ChatOpenAI(temperature=0, model_name="gpt-3.5-turbo"),
+        chain_type="stuff",
+        retriever=vector_store.as_retriever(
+            search_type="mmr", search_kwargs={"k": 10, "fetch_k": 50}
+        ),
+    )
+    while True:
+        q = input()
+        if q == "exit":
+            break
+        print(chain.run({"query": q}), end="\n\n")
+
+
 if __name__ == "__main__":
     # Load environment variables
     load_dotenv()
 
     print("Hello LangChain!")
-    # print(scrape_user_tweets(username="@elonmusk", num_tweets=100))
