@@ -140,20 +140,14 @@ def run_retrival_qna_chain_for_text_document(q: str) -> str:
 
 
 def run_retrival_qna_chain_for_pdf_document() -> None:
-    capgemini_doc_loader = PyPDFLoader(
-        "storage/pdf_documents/Final-Web-Version-Report-Harnessing-the-Value-of-Gen-AI.1.pdf"
+    doc_loader = PyPDFLoader(
+        "storage/pdf_documents/WEF_Top_10_Emerging_Technologies_of_2023.pdf"
     )
-    accenture_doc_loader = PyPDFLoader(
-        "storage/pdf_documents/Accenture-A-New-Era-of-Generative-AI-for-Everyone.pdf"
-    )
-    capgemini_documents = capgemini_doc_loader.load()
-    accenture_documents = accenture_doc_loader.load()
-
+    documents = doc_loader.load()
     splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=350, separator="\n")
-    cap_contexts = splitter.split_documents(capgemini_documents)
-    acc_contexts = splitter.split_documents(accenture_documents)
+    contexts = splitter.split_documents(documents)
     print(
-        f"Number of contexts created by splitter: # {len(cap_contexts)}, {len(acc_contexts)}"
+        f"Number of contexts created by splitter: # {len(contexts)}"
     )
     embeddings = OpenAIEmbeddings()
 
@@ -167,8 +161,7 @@ def run_retrival_qna_chain_for_pdf_document() -> None:
         index_to_docstore_id=dict(),
     )
 
-    vector_store.add_documents(cap_contexts)
-    vector_store.add_documents(acc_contexts)
+    vector_store.add_documents(contexts)
 
     chain = RetrievalQA.from_chain_type(
         llm=ChatOpenAI(temperature=0, model_name="gpt-3.5-turbo"),
@@ -177,11 +170,15 @@ def run_retrival_qna_chain_for_pdf_document() -> None:
             search_type="mmr", search_kwargs={"k": 10, "fetch_k": 50}
         ),
     )
+    print("Ask me anything on 'World Economic Forum's Report on Top 10 Emerging Technologies of 2023'", end="\n\n")
     while True:
         q = input()
         if q == "exit":
             break
-        print(chain.run({"query": q}), end="\n\n")
+        elif q == "":
+            continue
+        else:
+            print(chain.run({"query": q}), end="\n\n")
 
 
 if __name__ == "__main__":
@@ -189,3 +186,4 @@ if __name__ == "__main__":
     load_dotenv()
 
     print("Hello LangChain!")
+    run_retrival_qna_chain_for_pdf_document()
