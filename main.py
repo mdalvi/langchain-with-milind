@@ -3,19 +3,25 @@ import json
 import os
 from pathlib import Path
 
+import faiss
+
 # noinspection PyUnresolvedReferences
 import joblib
 import pinecone
+import whisper
 from dotenv import load_dotenv
-from langchain import PromptTemplate
 from langchain.chains import LLMChain
 from langchain.chains import RetrievalQA
 from langchain.chat_models import ChatOpenAI
-from langchain.document_loaders import TextLoader, PyPDFLoader
+from langchain.docstore import InMemoryDocstore
+from langchain.document_loaders import TextLoader, PyPDFLoader, ReadTheDocsLoader
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.output_parsers import PydanticOutputParser
-from langchain.text_splitter import CharacterTextSplitter
-import faiss
+from langchain.prompts import PromptTemplate
+from langchain.text_splitter import (
+    CharacterTextSplitter,
+    RecursiveCharacterTextSplitter,
+)
 
 # noinspection PyUnresolvedReferences
 from langchain.vectorstores import Pinecone, FAISS
@@ -26,7 +32,7 @@ from parsers.pydantic import PersonalIntel
 
 # noinspection PyUnresolvedReferences
 from third_parties.linkedin import get_linkedin_profile, get_saved_linkedin_profile
-from langchain.docstore import InMemoryDocstore
+from tools.regex import get_youtube_video_id
 
 
 def run_chain_for_information() -> None:
@@ -118,10 +124,10 @@ def run_retrival_qna_chain_for_text_document(q: str) -> str:
     doc_loader = TextLoader(
         "storage/text_documents/rt-2-new-model-translates-vision-and-language-into-action.txt"
     )
-    document = doc_loader.load()
+    raw_documents = doc_loader.load()
 
     splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=350)
-    contexts = splitter.split_documents(document)
+    contexts = splitter.split_documents(raw_documents)
     print(f"Number of contexts created by splitter: # {len(contexts)}")
 
     embeddings = OpenAIEmbeddings()
@@ -140,15 +146,15 @@ def run_retrival_qna_chain_for_text_document(q: str) -> str:
 
 
 def run_retrival_qna_chain_for_pdf_document() -> None:
-    doc_loader = PyPDFLoader(
-        "storage/pdf_documents/WEF_Top_10_Emerging_Technologies_of_2023.pdf"
-    )
-    documents = doc_loader.load()
+    """
+    Demonstrates guard rails using prompt engineering
+    :return:
+    """
+    doc_loader = PyPDFLoader("storage/pdf_documents/Capgemini-Gen-AI-portfolio_ENG.pdf")
+    raw_documents = doc_loader.load()
     splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=350, separator="\n")
-    contexts = splitter.split_documents(documents)
-    print(
-        f"Number of contexts created by splitter: # {len(contexts)}"
-    )
+    contexts = splitter.split_documents(raw_documents)
+    print(f"Number of contexts created by splitter: # {len(contexts)}")
     embeddings = OpenAIEmbeddings()
 
     # Initialize the vectorstore as empty
@@ -163,14 +169,28 @@ def run_retrival_qna_chain_for_pdf_document() -> None:
 
     vector_store.add_documents(contexts)
 
+    prompt_template = """Use the following pieces of context to answer the question at the end. If the answer is not available in the provided context, just say that you don't know, don't try to make up an answer.
+
+    {context}
+
+    Question: {question}
+    Answer:"""
+    custom_template = PromptTemplate(
+        template=prompt_template, input_variables=["context", "question"]
+    )
+    chain_type_kwargs = {"prompt": custom_template}
     chain = RetrievalQA.from_chain_type(
         llm=ChatOpenAI(temperature=0, model_name="gpt-3.5-turbo"),
         chain_type="stuff",
         retriever=vector_store.as_retriever(
             search_type="mmr", search_kwargs={"k": 10, "fetch_k": 50}
         ),
+        chain_type_kwargs=chain_type_kwargs,
     )
-    print("Ask me anything on 'World Economic Forum's Report on Top 10 Emerging Technologies of 2023'", end="\n\n")
+    print(
+        "Ask me anything on the provided PDF",
+        end="\n\n",
+    )
     while True:
         q = input()
         if q == "exit":
@@ -181,9 +201,56 @@ def run_retrival_qna_chain_for_pdf_document() -> None:
             print(chain.run({"query": q}), end="\n\n")
 
 
+def run_chain_on_read_the_docs() -> None:
+    pinecone.init(
+        api_key=os.environ["PINECONE_API_KEY"],
+        environment=os.environ["PINECONE_ENVIRONMENT"],
+    )
+    doc_loader = ReadTheDocsLoader(
+        path="storage/documentations/deap/deap.readthedocs.io/",
+        features="html.parser",
+    )
+
+    raw_documents = doc_loader.load()
+    splitter = RecursiveCharacterTextSplitter(chunk_size=512, chunk_overlap=64)
+    contexts = splitter.split_documents(raw_documents)
+    print(f"Number of contexts created by splitter: # {len(contexts)}")
+    embeddings = OpenAIEmbeddings()
+    vector_store_client = pinecone.Index("deap-docs")
+    vector_store = Pinecone(
+        vector_store_client, embedding_function=embeddings.embed_query, text_key="text"
+    )
+    vector_store.add_documents(contexts)
+
+    chain = RetrievalQA.from_chain_type(
+        llm=ChatOpenAI(temperature=0, model_name="gpt-3.5-turbo"),
+        chain_type="stuff",
+        retriever=vector_store.as_retriever(),
+    )
+    print("Ask me anything on 'DEAP Documentation'", end="\n\n")
+    while True:
+        q = input()
+        if q == "exit":
+            break
+        elif q == "":
+            continue
+        else:
+            print(chain.run({"query": q}), end="\n\n")
+
+
+def run_chain_on_tube(url: str):
+    # YouTube(url).streams.get_audio_only().download(output_path="storage/videos/", filename_prefix="audio_")
+    model = whisper.load_model("base")
+    result = model.transcribe(
+        "storage/videos/audio_Aiman Ezzat CEO on our FY 2022 results.mp4"
+    )
+    video_id = get_youtube_video_id(url)
+    joblib.dump(result, f"{video_id}.joblib")
+
+
 if __name__ == "__main__":
     # Load environment variables
     load_dotenv()
 
     print("Hello LangChain!")
-    run_retrival_qna_chain_for_pdf_document()
+    run_chain_on_tube("https://www.youtube.com/watch?v=c_FhNUgMyss")

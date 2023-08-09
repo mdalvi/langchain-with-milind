@@ -163,3 +163,12 @@ storage/linkedin/*.json
 !storage/linkedin/milinddalvi.json
 /storage/linkedin/images/*.jpg
 !/storage/linkedin/images/no_image.jpg
+
+/storage/documentations/deap/*/
+!storage/documentations/deap/__init__.py
+
+/storage/pdf_documents/*.pdf
+!/storage/pdf_documents/WEF_Top_10_Emerging_Technologies_of_2023.pdf
+
+/storage/videos/*.mp4
+/storage/videos/*.joblib

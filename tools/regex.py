@@ -21,3 +21,11 @@ def get_linkedin_username(profile_url: str) -> str | None:
         return match.group(1)
     else:
         return None
+
+
+def get_youtube_video_id(url):
+    regex_pattern = r"(?:v=|\/videos\/|embed\/|youtu.be\/|\/v\/|\/e\/|watch\?v=|&v=|\?v=|\/watch\?v=)([a-zA-Z0-9_-]{11})"
+    match = re.search(regex_pattern, url)
+    if match:
+        return match.group(1)
+    return None
