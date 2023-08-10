@@ -5,7 +5,9 @@ from typing import Tuple
 
 from langchain import PromptTemplate
 from langchain.chains import LLMChain
-from langchain.chat_models import ChatOpenAI
+
+# noinspection PyUnresolvedReferences
+from langchain.chat_models import ChatOpenAI, AzureChatOpenAI
 from langchain.output_parsers import PydanticOutputParser
 
 from parsers.pydantic import PersonalIntel
@@ -73,7 +75,16 @@ def run_chain_for_linkedin(
         template=custom_template,
         partial_variables={"format_instructions": out_parser.get_format_instructions()},
     )
-    llm = ChatOpenAI(temperature=0, model_name="gpt-3.5-turbo")
+    azure_credentials = {
+        "temperature": 0,
+        "deployment_name": os.environ["AZURE_OPENAI_DEPLOYMENT_NAME"],
+        "openai_api_type": os.environ["AZURE_OPENAI_API_TYPE"],
+        "openai_api_base": os.environ["AZURE_OPENAI_API_BASE"],
+        "openai_api_version": os.environ["AZURE_OPENAI_API_VERSION"],
+        "openai_api_key": os.environ["AZURE_OPENAI_API_KEY"],
+    }
+    llm = AzureChatOpenAI(**azure_credentials)
+    # llm = ChatOpenAI(temperature=0, model_name="gpt-3.5-turbo")
     chain = LLMChain(llm=llm, prompt=prompt)
     return (
         out_parser.parse(chain.run(profile_data=profile_data, prefix=prefix)),
