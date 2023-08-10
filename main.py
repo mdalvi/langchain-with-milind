@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 
 import faiss
+from proxycurl_py.models import PersonEndpointResponse
 
 # noinspection PyUnresolvedReferences
 import joblib
@@ -33,6 +34,11 @@ from parsers.pydantic import PersonalIntel
 # noinspection PyUnresolvedReferences
 from third_parties.linkedin import get_linkedin_profile, get_saved_linkedin_profile
 from tools.regex import get_youtube_video_id
+from langchain.document_loaders.generic import GenericLoader
+from langchain.document_loaders.parsers import OpenAIWhisperParser
+from langchain.document_loaders.blob_loaders.youtube_audio import YoutubeAudioLoader
+
+from typing import Awaitable
 
 
 def run_chain_for_information() -> None:
@@ -78,7 +84,7 @@ def run_chain_for_twitter_username(name: str) -> str:
     return result
 
 
-def run_chain_for_social_media(name: str) -> PersonalIntel:
+def run_chain_for_social_media(url: str = None, name: str = None) -> PersonalIntel:
     """
     Step 1: Searches google for LinkedIn URL of the person
     Step 2: Fetches public data from LinkedIn about the person using the url
@@ -87,13 +93,13 @@ def run_chain_for_social_media(name: str) -> PersonalIntel:
     Step 5: Generates summary and two interesting facts about the person using LLM and above information
     :return: None
     """
-    # profile = get_linkedin_profile(profile_url=run_chain_for_linkedin_url(name))
-    # data = json.loads(profile.content.decode('utf-8'))
-    # pi = data['public_identifier']
-    # with open(f"storage/linkedin/{pi}.json", "wb") as f:
-    #     f.write(profile.content)
+    url = run_chain_for_linkedin_url(name) if url is None else url
+    profile = get_linkedin_profile(profile_url=url)
+    pi = profile["public_identifier"]
+    with open(f"storage/linkedin/{pi}.json", "w") as f:
+        f.write(json.dumps(profile))
 
-    linkedin_profile = get_saved_linkedin_profile(f"storage/linkedin/ranjan252812.json")
+    linkedin_profile = get_saved_linkedin_profile(f"storage/linkedin/{pi}.json")
     # tweets = scrape_user_tweets(username=run_chain_for_twitter_username(name), num_tweets=5)
     out_parser = PydanticOutputParser(pydantic_object=PersonalIntel)
     custom_template = """
@@ -102,7 +108,6 @@ def run_chain_for_social_media(name: str) -> PersonalIntel:
         2. Two interesting facts about the person
         3. A topic that may interest them
         4. Two creative Ice-breakers to open a conversation with them
-        5. Two questions to ask them in job interview
         \n{format_instructions}
         """
 
@@ -239,13 +244,21 @@ def run_chain_on_read_the_docs() -> None:
 
 
 def run_chain_on_tube(url: str):
-    # YouTube(url).streams.get_audio_only().download(output_path="storage/videos/", filename_prefix="audio_")
-    model = whisper.load_model("base")
-    result = model.transcribe(
-        "storage/videos/audio_Aiman Ezzat CEO on our FY 2022 results.mp4"
-    )
     video_id = get_youtube_video_id(url)
-    joblib.dump(result, f"{video_id}.joblib")
+    # YouTube(url).streams.get_audio_only().download(output_path="storage/videos/", filename_prefix="audio_")
+    # model = whisper.load_model("base")
+    # result = model.transcribe(
+    #     "storage/videos/audio_Aiman Ezzat CEO on our FY 2022 results.mp4"
+    # )
+    # joblib.dump(result, f"{video_id}.joblib")
+    doc_loader = GenericLoader(
+        YoutubeAudioLoader([url], "storage/videos/"), OpenAIWhisperParser()
+    )
+    raw_documents = doc_loader.load()
+    joblib.dump(
+        [d.to_json() for d in raw_documents],
+        f"storage/videos/{video_id}_documents.joblib",
+    )
 
 
 if __name__ == "__main__":
@@ -253,4 +266,6 @@ if __name__ == "__main__":
     load_dotenv()
 
     print("Hello LangChain!")
-    run_chain_on_tube("https://www.youtube.com/watch?v=c_FhNUgMyss")
+    # "https://www.youtube.com/watch?v=c_FhNUgMyss"
+    # run_chain_on_tube("https://www.youtube.com/watch?v=c_FhNUgMyss")
+    run_chain_for_social_media(url="https://www.linkedin.com/in/aiman-ezzat/")

@@ -12,9 +12,6 @@ class PersonalIntel(BaseModel):
     ice_breakers: List[str] = Field(
         description="Ice breakers to open a conversation with the person"
     )
-    interview_questions: List[str] = Field(
-        description="Questions to ask in job interview"
-    )
 
     def to_dict(self):
         return {
@@ -22,5 +19,4 @@ class PersonalIntel(BaseModel):
             "facts": self.facts,
             "topics_of_interest": self.topics_of_interest,
             "ice_breakers": self.ice_breakers,
-            "interview_questions": self.interview_questions,
         }

@@ -171,4 +171,7 @@ storage/linkedin/*.json
 !/storage/pdf_documents/WEF_Top_10_Emerging_Technologies_of_2023.pdf
 
 /storage/videos/*.mp4
+/storage/videos/*.m4a
 /storage/videos/*.joblib
+/temp.ipynb
+/storage/branding/*.png
