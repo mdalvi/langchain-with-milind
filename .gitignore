@@ -172,6 +172,8 @@ storage/linkedin/*.json
 
 /storage/videos/*.mp4
 /storage/videos/*.m4a
+/storage/videos/*.json
 /storage/videos/*.joblib
 /temp.ipynb
 /storage/branding/*.png
+/storage/uploads/*.pdf

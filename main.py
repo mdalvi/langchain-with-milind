@@ -4,11 +4,10 @@ import os
 from pathlib import Path
 
 import faiss
-from proxycurl_py.models import PersonEndpointResponse
-
 # noinspection PyUnresolvedReferences
 import joblib
 import pinecone
+# noinspection PyUnresolvedReferences
 import whisper
 from dotenv import load_dotenv
 from langchain.chains import LLMChain
@@ -23,22 +22,17 @@ from langchain.text_splitter import (
     CharacterTextSplitter,
     RecursiveCharacterTextSplitter,
 )
-
 # noinspection PyUnresolvedReferences
 from langchain.vectorstores import Pinecone, FAISS
+# noinspection PyUnresolvedReferences
+from pytube import YouTube
 
 from agents.linkedin import get_linkedin_profile_url
 from agents.twitter import get_twitter_profile_username
 from parsers.pydantic import PersonalIntel
-
 # noinspection PyUnresolvedReferences
 from third_parties.linkedin import get_linkedin_profile, get_saved_linkedin_profile
 from tools.regex import get_youtube_video_id
-from langchain.document_loaders.generic import GenericLoader
-from langchain.document_loaders.parsers import OpenAIWhisperParser
-from langchain.document_loaders.blob_loaders.youtube_audio import YoutubeAudioLoader
-
-from typing import Awaitable
 
 
 def run_chain_for_information() -> None:
@@ -245,20 +239,17 @@ def run_chain_on_read_the_docs() -> None:
 
 def run_chain_on_tube(url: str):
     video_id = get_youtube_video_id(url)
-    # YouTube(url).streams.get_audio_only().download(output_path="storage/videos/", filename_prefix="audio_")
-    # model = whisper.load_model("base")
-    # result = model.transcribe(
-    #     "storage/videos/audio_Aiman Ezzat CEO on our FY 2022 results.mp4"
+    # yt = YouTube(url)
+    # down_ext = "mp4"
+    # yt.streams.order_by(
+    #     "resolution"
+    # ).desc().first().download(output_path=f"storage/videos/{video_id}.{down_ext}")
+    # yt.streams.get_audio_only().download(
+    #     output_path=f"storage/videos/audio_{video_id}.{down_ext}"
     # )
-    # joblib.dump(result, f"{video_id}.joblib")
-    doc_loader = GenericLoader(
-        YoutubeAudioLoader([url], "storage/videos/"), OpenAIWhisperParser()
-    )
-    raw_documents = doc_loader.load()
-    joblib.dump(
-        [d.to_json() for d in raw_documents],
-        f"storage/videos/{video_id}_documents.joblib",
-    )
+    model = whisper.load_model("base")
+    result = model.transcribe("storage/videos/BZD6PBnF6F0.mp4")
+    joblib.dump(result, f"storage/videos/{video_id}_transcript.joblib")
 
 
 if __name__ == "__main__":
@@ -266,6 +257,5 @@ if __name__ == "__main__":
     load_dotenv()
 
     print("Hello LangChain!")
-    # "https://www.youtube.com/watch?v=c_FhNUgMyss"
-    # run_chain_on_tube("https://www.youtube.com/watch?v=c_FhNUgMyss")
-    run_chain_for_social_media(url="https://www.linkedin.com/in/aiman-ezzat/")
+    run_chain_on_tube("https://www.youtube.com/watch?v=BZD6PBnF6F0")
+    # run_chain_for_social_media(url="https://www.linkedin.com/in/aiman-ezzat/")
