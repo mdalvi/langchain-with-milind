@@ -4,7 +4,7 @@ import time
 import streamlit as st
 from pydantic import ValidationError, constr, BaseModel
 
-from app_helper import run_chain_for_linkedin, GENDER_PREFIX
+from streamlit_helper import run_chain_for_linkedin, GENDER_PREFIX
 
 
 class LinkedInUrlModel(BaseModel):

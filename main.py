@@ -4,9 +4,11 @@ import os
 from pathlib import Path
 
 import faiss
+
 # noinspection PyUnresolvedReferences
 import joblib
 import pinecone
+
 # noinspection PyUnresolvedReferences
 import whisper
 from dotenv import load_dotenv
@@ -22,14 +24,17 @@ from langchain.text_splitter import (
     CharacterTextSplitter,
     RecursiveCharacterTextSplitter,
 )
+
 # noinspection PyUnresolvedReferences
 from langchain.vectorstores import Pinecone, FAISS
+
 # noinspection PyUnresolvedReferences
 from pytube import YouTube
 
 from agents.linkedin import get_linkedin_profile_url
 from agents.twitter import get_twitter_profile_username
 from parsers.pydantic import PersonalIntel
+
 # noinspection PyUnresolvedReferences
 from third_parties.linkedin import get_linkedin_profile, get_saved_linkedin_profile
 from tools.regex import get_youtube_video_id

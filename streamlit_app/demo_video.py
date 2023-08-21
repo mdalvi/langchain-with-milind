@@ -2,7 +2,7 @@ import re
 
 import streamlit as st
 
-from app_helper import run_retrival_qna_chain_for_video
+from streamlit_helper import run_retrival_qna_chain_for_video
 from tools.regex import get_youtube_video_id
 
 

@@ -2,7 +2,7 @@ import os
 
 import streamlit as st
 
-from app_helper import run_retrival_qna_chain_for_pdf_document
+from streamlit_helper import run_retrival_qna_chain_for_pdf_document
 from common.functions import get_timestamped_filename
 
 # Page re-run assignments

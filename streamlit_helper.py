@@ -160,7 +160,9 @@ def run_retrival_qna_chain_for_pdf_document(file_path: str) -> BaseRetrievalQA:
     chain = RetrievalQA.from_chain_type(
         llm=ChatOpenAI(temperature=0, model_name="gpt-3.5-turbo"),
         chain_type="stuff",
-        retriever=vector_store.as_retriever(search_type="mmr", search_kwargs={"k": 15, "fetch_k": 50}),  # search_type="mmr", search_kwargs={"k": 10, "fetch_k": 50}
+        retriever=vector_store.as_retriever(
+            search_type="mmr", search_kwargs={"k": 15, "fetch_k": 50}
+        ),  # search_type="mmr", search_kwargs={"k": 10, "fetch_k": 50}
         chain_type_kwargs=chain_type_kwargs,
     )
     return chain
