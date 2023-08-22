@@ -5,6 +5,7 @@ import shutil
 from typing import Tuple
 
 import faiss
+import joblib
 from langchain.chains import LLMChain
 from langchain.chains import RetrievalQA
 from langchain.chains.retrieval_qa.base import BaseRetrievalQA
@@ -12,18 +13,18 @@ from langchain.chains.retrieval_qa.base import BaseRetrievalQA
 # noinspection PyUnresolvedReferences
 from langchain.chat_models import ChatOpenAI, AzureChatOpenAI
 from langchain.docstore import InMemoryDocstore
+from langchain.document_loaders import JSONLoader
 from langchain.document_loaders import PyPDFLoader
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.output_parsers import PydanticOutputParser
 from langchain.prompts import PromptTemplate
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.vectorstores import FAISS
-import joblib
+
 from parsers.pydantic import PersonalIntel
 from third_parties.linkedin import get_linkedin_profile, get_saved_linkedin_profile
 from tools.regex import get_linkedin_username
 from tools.requests import get_image_from_url
-from langchain.document_loaders import JSONLoader
 
 GENDER_PREFIX = [
     "Mr.",
@@ -136,7 +137,6 @@ def run_retrival_qna_chain_for_pdf_document(file_path: str) -> BaseRetrievalQA:
     contexts = splitter.split_documents(raw_documents)
     print(f"Number of contexts created by splitter: # {len(contexts)}")
     embeddings = OpenAIEmbeddings()
-
     # Initialize the vectorstore as empty
     embedding_size = 1536
     index = faiss.IndexFlatL2(embedding_size)

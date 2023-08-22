@@ -2,15 +2,13 @@ import os
 
 import streamlit as st
 
-from streamlit_helper import run_retrival_qna_chain_for_pdf_document
 from common.functions import get_timestamped_filename
+from streamlit_helper import run_retrival_qna_chain_for_pdf_document
 
 # Page re-run assignments
 st.image("storage/branding/brand_logo.png", use_column_width=True)
-st.write("## Demo of Guardrails in Generative-AI")
-st.info(
-    "Expectations: Gen-AI should refuse to answer queries beyond provided PDF context"
-)
+st.write("## Generative AI on PDF")
+st.info("Expectations: Gen-AI should respond with ideal answers from PDF context")
 
 is_submission = True if "submitted" in st.session_state else False
 uploaded_file = st.file_uploader("Upload a PDF document", type=["pdf"])
@@ -57,7 +55,15 @@ else:
             if input_text:
                 with st.spinner("Finding answer for your query..."):
                     result = chain.run({"query": input_text})
+                    style = """
+                        <style>
+                        .katex-html {text-align: left;}
+                        </style>"""
+
+                    st.markdown(
+                        f"{style}{result}",
+                        unsafe_allow_html=True,
+                    )
                     st.session_state.submitted = True
-                    st.success(result)
             else:
                 st.warning("Invalid query!")

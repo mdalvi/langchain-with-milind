@@ -21,7 +21,7 @@ def main():
             ),
             Page(
                 "streamlit_app/demo_guardrails.py",
-                "2. Demo of Guardrails in Generative-AI",
+                "2. Generative-AI on PDF",
                 ":large_green_circle:",
             ),
             Page(
