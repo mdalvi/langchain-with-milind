@@ -12,8 +12,9 @@ import pinecone
 # noinspection PyUnresolvedReferences
 import whisper
 from dotenv import load_dotenv
-from langchain.chains import LLMChain
-from langchain.chains import RetrievalQA
+from langchain.agents import AgentType, initialize_agent, Tool
+from langchain.agents.agent_toolkits import create_python_agent, create_csv_agent
+from langchain.chains import LLMChain, RetrievalQA
 from langchain.chat_models import ChatOpenAI
 from langchain.docstore import InMemoryDocstore
 from langchain.document_loaders import TextLoader, PyPDFLoader, ReadTheDocsLoader
@@ -24,6 +25,7 @@ from langchain.text_splitter import (
     CharacterTextSplitter,
     RecursiveCharacterTextSplitter,
 )
+from langchain.tools import PythonREPLTool
 
 # noinspection PyUnresolvedReferences
 from langchain.vectorstores import Pinecone, FAISS
@@ -257,10 +259,78 @@ def run_chain_on_tube(url: str):
     joblib.dump(result, f"storage/videos/{video_id}_transcript.joblib")
 
 
+def run_chain_for_python_agent():
+    agent = create_python_agent(
+        llm=ChatOpenAI(temperature=0, model_name="gpt-3.5-turbo"),
+        verbose=True,
+        tool=PythonREPLTool(),
+        agent_type=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
+    )
+
+    print(
+        agent.run(
+            "write a python code to connect a linux server 10.0.0.1 using password ^*(JHKKLL using SSH. \
+            paramiko lib is already installed on system. DO NOT EXECUTE THE CODE"
+        )
+    )
+
+
+def run_chain_for_csv_agent():
+    agent = create_csv_agent(
+        llm=ChatOpenAI(temperature=0, model_name="gpt-3.5-turbo"),
+        verbose=True,
+        path="storage/csv_documents/episode_info.csv",
+        agent_type=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
+    )
+
+    print(agent.run("how many records in CSV file"))
+
+
+def run_chain_for_agent_router():
+    py_agent = create_python_agent(
+        llm=ChatOpenAI(temperature=0, model_name="gpt-3.5-turbo"),
+        verbose=True,
+        tool=PythonREPLTool(),
+        agent_type=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
+    )
+    csv_agent = create_csv_agent(
+        llm=ChatOpenAI(temperature=0, model_name="gpt-3.5-turbo"),
+        verbose=True,
+        path="storage/csv_documents/episode_info.csv",
+        agent_type=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
+    )
+    agent = initialize_agent(
+        tools=[
+            Tool(
+                name="python agent",
+                func=py_agent.run,
+                description="useful when you need to transform natural language \
+        instruction into python code and execute it, returning the results of code execution. \
+        DO NOT SEND PYTHON CODE TO THIS TOOL.",
+            ),
+            Tool(
+                name="python agent",
+                func=csv_agent.run,
+                description="useful when you need to answer questions from CSV file. \
+                Takes an input in natural language, performs calculations on CSV using pandas and returns the results.",
+            ),
+        ],
+        llm=ChatOpenAI(temperature=0, model_name="gpt-3.5-turbo"),
+        verbose=True,
+        agent_type=AgentType.OPENAI_FUNCTIONS,
+    )
+    print(
+        agent.run(
+            "what are the total number of records in CSV. Use the output and find the square root of it using python"
+        )
+    )
+
+
 if __name__ == "__main__":
     # Load environment variables
     load_dotenv()
 
     print("Hello LangChain!")
-    run_chain_on_tube("https://www.youtube.com/watch?v=BZD6PBnF6F0")
+    # run_chain_on_tube("https://www.youtube.com/watch?v=BZD6PBnF6F0")
+    run_chain_for_agent_router()
     # run_chain_for_social_media(url="https://www.linkedin.com/in/aiman-ezzat/")

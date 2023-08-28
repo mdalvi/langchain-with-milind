@@ -177,3 +177,4 @@ storage/linkedin/*.json
 /temp.ipynb
 /storage/branding/*.png
 /storage/uploads/*.pdf
+/storage/csv_documents/episode_info.csv
